@@ -12,13 +12,11 @@
             font-weight: bold;
             margin: 0;
         }
-
         .message {
             font-size: 1.2em;
             color: #666;
             margin: 0;
         }
-
         button {
             background-color: #4CAF50;
             color: red;
@@ -26,7 +24,6 @@
             margin: 8px 0;
             /* border: ; */
             cursor: pointer;
-
             /* width: 100%; */
         }
         div{
@@ -39,6 +36,7 @@
     <div>
         <h1>Thanks for registration</h1>
     </div>  
+      
     <div>
         <p class="message">
             You have successfully registered on our website.<br>Please, click the button below to confirm your email address.
@@ -46,7 +44,7 @@
     </div>
     
     <div>
-        <a href="{{ activation_link }}"></a><button type="submit">Click</button></a>
+        <a href="{{ activation_link }}"><button type="submit">Click</button></a>
     </div>
 </body>
 </html>
