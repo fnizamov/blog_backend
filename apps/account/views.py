@@ -4,8 +4,14 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.permissions import IsAuthenticated
 
-from .serializers import UserRegistrationSerializer
+from .serializers import(
+    UserRegistrationSerializer,
+    PasswordChangeSerializer,
+    RecoveryPasswordSerializer,
+    SetRecoveredPasswordSerializer,
+)
 
 
 User = get_user_model()
@@ -40,5 +46,46 @@ class AccountActivationView(APIView):
         )
 
 
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
 
-# TODO: Активация, Смена пароля, Удаление аккаунта, Восстановление пароля
+    def post(self, request: Request):
+        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid(raise_exception=True):
+            serializer.set_new_password()
+            return Response(
+                'Password changed succsefully',
+                status=status.HTTP_200_OK
+            )
+
+class RecoveryPasswordView(APIView):
+    def post(self, request: Request):
+        serializer = RecoveryPasswordSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.send_code()
+            return Response(
+                'Password recovery code has been send to your email',
+                status=status.HTTP_200_OK
+            )
+
+
+class SetRecoveredPasswordView(APIView):
+    def post(self, request: Request):
+        serializer = SetRecoveredPasswordSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.set_new_password()
+            return Response(
+                'Password recovered succsessfully',
+                status=status.HTTP_200_OK
+            )
+
+class DeleteAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request: Request):
+        username = request.user.username
+        User.objects.get(username=username).delete()
+        return Response(
+            'Account deleted succsessfully',
+            status=status.HTTP_204_NO_CONTENT
+        )
