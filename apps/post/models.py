@@ -1,7 +1,9 @@
-import imp
 from django.db import models
 from django.contrib.auth import get_user_model
 from slugify import slugify
+from .utils import get_time
+
+
 
 User = get_user_model()
 
