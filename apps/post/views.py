@@ -1,6 +1,8 @@
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from .permissions import IsOwner
+from rest_framework import mixins, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 # from rest_framework.generics import (
 #     ListAPIView,
 #     RetrieveAPIView,
@@ -16,8 +18,10 @@ from .models import (
 from .serializers import (
     PostListSerializer,
     PostSerializer,
-    PostCreateSerializer
+    PostCreateSerializer,
+    CommentSerializer
 )
+from .permissions import IsOwner
 
 # class PostListView(ListAPIView):
     # # queryset = Post.objects.filter(status='open')
@@ -42,11 +46,42 @@ class PostViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             self.permission_classes = [AllowAny]
-        elif self.action == 'create':
+        if self.action == 'comment' and self.request.method == 'DELETE':
+            self.permission_classes = [IsOwner]
+        if self.action in ['create', 'comment']:
             self.permission_classes = [IsAuthenticated]
-        elif self.action in ['destroy', 'update', 'partial_update']:
+        if self.action in ['destroy', 'update', 'partial_update']:
             self.permission_classes = [IsOwner]
         return super().get_permissions()
+
+    @action(detail=True, methods=['POST', 'DELETE'])
+    def comment(self, request, pk=None):
+        post = self.get_object()
+        serializer = CommentSerializer(data=request.data)
+        comment = Comment.objects.filter(
+            user=request.user,
+            post=pk
+        ).first()
+        if serializer.is_valid():
+            if request.method == 'POST':
+                serializer.save(user=request.user, post=post)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            elif comment is not None and request.method == 'DELETE':
+                comment.delete()
+                return Response(
+                    'Deleted!', status=status.HTTP_204_NO_CONTENT
+                )
+
+class CommentCreateDeleteView(
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    GenericViewSet
+    ):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 """
 Actions:
@@ -59,8 +94,7 @@ partial_update - PATCH /post/1/
 update() - PUT /post/1/
 """
 
-# TODO: создание комментариев
-# TODO: отображение комментариев в постах
+# TODO: пофиксить удаление комментариев
 # TODO: создание лайков
 # TODO: отображение лайков в постах
 # TODO: создать модельку рейтингов

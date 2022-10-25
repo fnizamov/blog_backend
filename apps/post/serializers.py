@@ -10,7 +10,7 @@ from .models import(
 class PostListSerializer(serializers.ModelSerializer):   
     class Meta:
         model = Post
-        fields = ('user', 'title', 'image')
+        fields = ('user', 'title', 'image', 'slug')
 
 
 class PostSerializer(serializers.ModelSerializer):
@@ -20,16 +20,32 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = '__all__'
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['comments'] = CommentSerializer(
+            instance.comments.all(), many=True
+        ).data
+        return representation
+
+
 class PostCreateSerializer(serializers.ModelSerializer):
-    user = serializers.CurrentUserDefault()
+    user = serializers.ReadOnlyField(
+        default=serializers.CurrentUserDefault(),
+        source='user.username'
+    )
 
     class Meta:
         model = Post
-        exclude = ['user']
-
+        fields = '__all__'
+    
 
 class CommentSerializer(serializers.ModelSerializer):
+    user = serializers.ReadOnlyField(
+        default=serializers.CurrentUserDefault(),
+        source='user.username'
+    )
+
     class Meta:
         model = Comment
-        exclude = ['id']
+        exclude = ['id', 'post']
         
