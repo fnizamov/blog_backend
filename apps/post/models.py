@@ -112,4 +112,4 @@ class Rating(models.Model):
     )
 
     def __str__(self):
-        return (self.rating)
+        return str(self.rating)
