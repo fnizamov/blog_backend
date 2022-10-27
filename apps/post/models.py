@@ -51,6 +51,15 @@ class Post(models.Model):
         ordering = ('created_at', )
 
 
+class PostImage(models.Model):
+    image = models.ImageField(upload_to='post_images/carousel')
+    post = models.ForeignKey(
+        to=Post,
+        on_delete=models.CASCADE,
+        related_name='post_images'
+    )
+    
+
 class Tag(models.Model):
     title = models.CharField(max_length=30, unique=True)
     slug = models.SlugField(max_length=35, primary_key=True, blank=True)
