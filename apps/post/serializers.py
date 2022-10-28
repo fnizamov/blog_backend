@@ -4,6 +4,7 @@ from requests import request
 from rest_framework import serializers
 from django.db.models import Avg
 from .models import(
+    Like,
     Post,
     Rating,
     Tag,
@@ -31,6 +32,8 @@ class PostSerializer(serializers.ModelSerializer):
         representation['carousel'] = PostImageSerializer(
             instance.post_images.all(), many=True).data
         rating = instance.ratings.aggregate(Avg('rating'))['rating__avg']
+        representation['likes'] = instance.likes.all().count()
+        representation['liked_by'] = LikeSerializer(instance.likes.all().only('user'), many=True).data
         if rating:
             representation['rating'] = round(rating, 1)
         else:
@@ -56,12 +59,13 @@ class PostCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        # fields = '__all__'
-        exclude = ('tag', )
+        fields = '__all__'
     
     def create(self, validated_data):
         carousel_images = validated_data.pop('carousel_img')
+        tag = validated_data.pop('tag')
         post = Post.objects.create(**validated_data)
+        post.tag.set(tag)
         images = []
         for image in carousel_images:
             images.append(PostImage(post=post, image=image))
@@ -101,3 +105,48 @@ class RatingSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.rating = validated_data.get('rating')
         return super().update(instance, validated_data)
+
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = '__all__'
+
+    def validate(self, attrs):
+        tag = attrs.get('title')
+        if Tag.objects.filter(title=tag).exists():
+            raise serializers.ValidationError('Tag with this name already exists')
+        return attrs
+
+
+class CurrentPostDefault:
+    requires_context = True
+
+    def __call__(self, serializer_field):
+        return serializer_field.context['post']
+
+
+class LikeSerializer(serializers.ModelSerializer):
+    user = serializers.ReadOnlyField(source='user.username')
+    post = serializers.HiddenField(default=CurrentPostDefault())
+
+    class Meta:
+        model = Like
+        fields = '__all__'
+
+    def create(self, validated_data):
+        user = self.context.get('request').user
+        post = self.context.get('post').pk
+        like = Like.objects.filter(user=user, post=post).first()
+        if like:
+            raise serializers.ValidationError('You have already liked this post!')
+        return super().create(validated_data)
+
+    def unlike(self):
+        user = self.context.get('request').user
+        post = self.context.get('post').pk
+        like = Like.objects.filter(user=user, post=post).first()
+        if like:
+            like.delete()
+        else:
+            raise serializers.ValidationError('Not liked yet!')

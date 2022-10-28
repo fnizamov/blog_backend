@@ -122,3 +122,19 @@ class Rating(models.Model):
 
     def __str__(self):
         return str(self.rating)
+
+
+class Like(models.Model):
+    user = models.ForeignKey(
+        to=User,
+        on_delete=models.CASCADE,
+        related_name='likes'
+    )
+    post = models.ForeignKey(
+        to=Post,
+        on_delete=models.CASCADE,
+        related_name='likes'
+    )
+
+    def __str__(self) -> str:
+        return f'Liked by {self.user.username}'

@@ -17,11 +17,13 @@ from .models import (
     Rating
 )
 from .serializers import (
+    LikeSerializer,
     PostListSerializer,
     PostSerializer,
     PostCreateSerializer,
     CommentSerializer,
-    RatingSerializer
+    RatingSerializer,
+    TagSerializer
 )
 from .permissions import IsOwner
 
@@ -50,7 +52,7 @@ class PostViewSet(ModelViewSet):
             self.permission_classes = [AllowAny]
         if self.action == 'comment' and self.request.method == 'DELETE':
             self.permission_classes = [IsOwner]
-        if self.action in ['create', 'comment', 'set_rating']:
+        if self.action in ['create', 'comment', 'set_rating', 'like']:
             self.permission_classes = [IsAuthenticated]
         if self.action in ['destroy', 'update', 'partial_update']:
             self.permission_classes = [IsOwner]
@@ -86,6 +88,24 @@ class PostViewSet(ModelViewSet):
             elif request.method == 'POST':
                 serializer.create(serializer.validated_data)
                 return Response(serializer.data)
+            return Response ('ZAGLUSHKA')
+    
+    @action(detail=True, methods=['POST','DELETE'])
+    def like(self, request, pk=None):
+        post = self.get_object()
+        serializer = LikeSerializer(data=request.data, context={
+            'request': request,
+            'post': post
+        })
+        if serializer.is_valid(raise_exception=True):
+            if request.method == 'POST':
+                serializer.save(user=request.user)
+                return Response('Liked!')
+            if request.method == 'DELETE':
+                serializer.unlike()
+                return Response('Unliked!')
+
+
 
 class CommentCreateDeleteView(
     mixins.DestroyModelMixin,
@@ -94,6 +114,25 @@ class CommentCreateDeleteView(
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsOwner]
+
+
+class TagViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    GenericViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    
+    def get_permissions(self):
+        if self.action == 'create':
+            self.permission_classes = [IsAuthenticated]
+        if self.action == 'destroy':
+            self.permission_classes = [IsAdminUser]
+        return super().get_permissions()
+    
+
 
 """
 Actions:
@@ -106,7 +145,6 @@ partial_update - PATCH /post/1/
 update() - PUT /post/1/
 """
 
-
-# TODO: создание лайков
-# TODO: отображение лайков в постах
+# TODO: fix rating
 # TODO: фильтрация, поиск, пагинация
+# TODO: кастомизация админ-панели
