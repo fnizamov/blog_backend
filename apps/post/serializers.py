@@ -150,3 +150,12 @@ class LikeSerializer(serializers.ModelSerializer):
             like.delete()
         else:
             raise serializers.ValidationError('Not liked yet!')
+
+
+class LikedPostSerializer(serializers.ModelSerializer):
+    url = serializers.URLField(source='post.get_absolute_url')
+    post = serializers.ReadOnlyField(source='post.title')
+
+    class Meta:
+        model = Like
+        fields = ['post', 'user', 'url']

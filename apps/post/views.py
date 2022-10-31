@@ -1,8 +1,10 @@
+from rest_framework import mixins, status, filters
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.generics import ListAPIView
+from django_filters import rest_framework as rest_filter
 # from rest_framework.generics import (
 #     ListAPIView,
 #     RetrieveAPIView,
@@ -14,16 +16,18 @@ from .models import (
     Post,
     Tag,
     Comment,
-    Rating
+    Rating,
+    Like
 )
 from .serializers import (
-    LikeSerializer,
     PostListSerializer,
     PostSerializer,
     PostCreateSerializer,
     CommentSerializer,
     RatingSerializer,
-    TagSerializer
+    TagSerializer,
+    LikeSerializer,
+    LikedPostSerializer
 )
 from .permissions import IsOwner
 
@@ -36,6 +40,14 @@ from .permissions import IsOwner
 class PostViewSet(ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+    filter_backends = [
+        filters.SearchFilter,
+        rest_filter.DjangoFilterBackend,
+        filters.OrderingFilter
+        ]
+    search_fields = ['title', 'user__username']
+    filterset_fields = ['tag']
+    ordering_fields = ['created_at']
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -80,7 +92,7 @@ class PostViewSet(ModelViewSet):
         if serializer.is_valid(raise_exception=True):
             if rate and request.method == 'POST':
                 return Response(
-                    {'detail': 'Rating object exists. Us PATCH method'}
+                    {'detail': 'Rating object exists. Use PATCH method'}
                 )
             elif rate and request.method == 'PATCH':
                 serializer.update(rate, serializer.validated_data)
@@ -88,7 +100,9 @@ class PostViewSet(ModelViewSet):
             elif request.method == 'POST':
                 serializer.create(serializer.validated_data)
                 return Response(serializer.data)
-            return Response ('ZAGLUSHKA')
+            else:
+                return Response({'detail': 'Rating object does not exist. Use POST method.'})
+            
     
     @action(detail=True, methods=['POST','DELETE'])
     def like(self, request, pk=None):
@@ -133,6 +147,13 @@ class TagViewSet(
         return super().get_permissions()
     
 
+class LikedPostsView(ListAPIView):
+    serializer_class = LikedPostSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return Like.objects.filter(user=user)
 
 """
 Actions:
@@ -145,6 +166,5 @@ partial_update - PATCH /post/1/
 update() - PUT /post/1/
 """
 
-# TODO: fix rating
-# TODO: фильтрация, поиск, пагинация
+# TODO: отображение лайкнутых записей
 # TODO: кастомизация админ-панели
